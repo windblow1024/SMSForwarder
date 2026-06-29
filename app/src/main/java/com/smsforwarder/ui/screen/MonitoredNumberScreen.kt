@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +19,7 @@ import com.smsforwarder.ui.viewmodel.MainViewModel
 
 /**
  * 被监控号码管理页面
- * 默认号码（10086202）不可删除、不可修改
+ * 所有号码都可以修改和删除（包括默认的10086202）
  */
 @Composable
 fun MonitoredNumberScreen(viewModel: MainViewModel) {
@@ -46,11 +45,7 @@ fun MonitoredNumberScreen(viewModel: MainViewModel) {
                 items(numbers, key = { it.id }) { item ->
                     MonitoredNumberCard(
                         item = item,
-                        onDelete = {
-                            if (!item.isDefault) {
-                                viewModel.deleteMonitoredNumber(item.id)
-                            }
-                        }
+                        onDelete = { viewModel.deleteMonitoredNumber(item.id) }
                     )
                 }
             }
@@ -89,21 +84,12 @@ fun MonitoredNumberCard(item: MonitoredNumberEntity, onDelete: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (item.isDefault) {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = "默认",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            } else {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = "监控号码",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            }
+            Icon(
+                Icons.Default.Star,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp)
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.phoneNumber,
@@ -117,22 +103,13 @@ fun MonitoredNumberCard(item: MonitoredNumberEntity, onDelete: () -> Unit) {
                         fontSize = 14.sp
                     )
                 }
-                if (item.isDefault) {
-                    Text(
-                        text = "默认号码（不可删除）",
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontSize = 12.sp
-                    )
-                }
             }
-            if (!item.isDefault) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
