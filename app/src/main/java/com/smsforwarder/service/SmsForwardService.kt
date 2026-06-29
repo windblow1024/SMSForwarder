@@ -51,7 +51,9 @@ class SmsForwardService : Service() {
         super.onCreate()
         Log.d(TAG, "服务创建")
         startForeground(NOTIFICATION_ID, createNotification("服务已启动"))
-        addLog("系统", "服务已启动")
+        serviceScope.launch {
+            addLog("系统", "服务已启动")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -64,7 +66,9 @@ class SmsForwardService : Service() {
                 }
             }
             ACTION_STOP_SERVICE -> {
-                addLog("系统", "服务停止")
+                serviceScope.launch {
+                    addLog("系统", "服务停止")
+                }
                 stopSelf()
             }
         }
