@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smsforwarder.data.model.ForwardLogEntity
@@ -93,41 +94,59 @@ fun ForwardLogCard(log: ForwardLogEntity) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "→ ${log.whitelistPhone}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = dateFormat.format(Date(log.forwardTime)),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+            // 时间
             Text(
-                text = "来源: ${log.sourceNumber}",
-                fontSize = 13.sp,
+                text = dateFormat.format(Date(log.forwardTime)),
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = log.content,
-                fontSize = 13.sp,
-                maxLines = 3
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "结果: ${log.result}",
-                fontSize = 12.sp,
-                color = if (log.result == "成功") MaterialTheme.colorScheme.secondary
-                else MaterialTheme.colorScheme.error
-            )
+
+            if (log.whitelistPhone == "系统") {
+                // 系统日志
+                Text(
+                    text = log.content,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                // 转发日志
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "→ ${log.whitelistPhone}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (log.sourceNumber.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "来源: ${log.sourceNumber}",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = log.content,
+                    fontSize = 13.sp,
+                    maxLines = 3
+                )
+                if (log.result.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "结果: ${log.result}",
+                        fontSize = 12.sp,
+                        color = if (log.result == "成功") MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     }
 }

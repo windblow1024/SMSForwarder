@@ -112,6 +112,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
         Button(
             onClick = {
+                viewModel.addServiceLog("服务启动")
                 context.startForegroundService(
                     Intent(context, SmsForwardService::class.java)
                 )
@@ -126,6 +127,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
         OutlinedButton(
             onClick = {
+                viewModel.addServiceLog("服务停止")
                 context.startService(
                     Intent(context, SmsForwardService::class.java).apply {
                         action = SmsForwardService.ACTION_STOP_SERVICE

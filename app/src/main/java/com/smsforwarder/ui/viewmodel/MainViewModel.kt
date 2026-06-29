@@ -114,6 +114,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.setSetting(SmsForwarderApp.KEY_COMMAND_FORWARD, cmd)
             commandForward.value = cmd
+            addSystemLog("申请转发指令已修改为: $cmd")
         }
     }
 
@@ -121,6 +122,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.setSetting(SmsForwarderApp.KEY_COMMAND_STOP, cmd)
             commandStop.value = cmd
+            addSystemLog("停止转发指令已修改为: $cmd")
         }
     }
 
@@ -128,10 +130,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.setSetting(SmsForwarderApp.KEY_AUTH_DURATION, minutes)
             authDuration.value = minutes
+            addSystemLog("授权有效期已修改为: ${minutes}分钟")
         }
     }
 
     // ===== 日志操作 =====
+
+    fun addSystemLog(message: String) {
+        viewModelScope.launch {
+            repository.addForwardLog(
+                ForwardLogEntity(
+                    whitelistPhone = "系统",
+                    sourceNumber = "",
+                    content = message,
+                    forwardTime = System.currentTimeMillis(),
+                    result = ""
+                )
+            )
+        }
+    }
+
+    fun addServiceLog(action: String) {
+        viewModelScope.launch {
+            repository.addForwardLog(
+                ForwardLogEntity(
+                    whitelistPhone = "系统",
+                    sourceNumber = "",
+                    content = action,
+                    forwardTime = System.currentTimeMillis(),
+                    result = ""
+                )
+            )
+        }
+    }
 
     fun clearLogs() {
         viewModelScope.launch {

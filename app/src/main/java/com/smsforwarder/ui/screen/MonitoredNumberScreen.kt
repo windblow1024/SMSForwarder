@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +20,7 @@ import com.smsforwarder.ui.viewmodel.MainViewModel
 
 /**
  * 被监控号码管理页面
- * 可添加、修改、删除被监控的短信号码（默认10086202）
+ * 默认号码（10086202）不可删除、不可修改
  */
 @Composable
 fun MonitoredNumberScreen(viewModel: MainViewModel) {
@@ -45,7 +46,11 @@ fun MonitoredNumberScreen(viewModel: MainViewModel) {
                 items(numbers, key = { it.id }) { item ->
                     MonitoredNumberCard(
                         item = item,
-                        onDelete = { viewModel.deleteMonitoredNumber(item.id) }
+                        onDelete = {
+                            if (!item.isDefault) {
+                                viewModel.deleteMonitoredNumber(item.id)
+                            }
+                        }
                     )
                 }
             }
@@ -86,9 +91,16 @@ fun MonitoredNumberCard(item: MonitoredNumberEntity, onDelete: () -> Unit) {
         ) {
             if (item.isDefault) {
                 Icon(
-                    Icons.Default.Star,
+                    Icons.Default.Lock,
                     contentDescription = "默认",
                     tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            } else {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = "监控号码",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(end = 8.dp)
                 )
             }
@@ -107,7 +119,7 @@ fun MonitoredNumberCard(item: MonitoredNumberEntity, onDelete: () -> Unit) {
                 }
                 if (item.isDefault) {
                     Text(
-                        text = "默认号码",
+                        text = "默认号码（不可删除）",
                         color = MaterialTheme.colorScheme.secondary,
                         fontSize = 12.sp
                     )

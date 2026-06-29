@@ -6,16 +6,12 @@ import android.net.Uri
 import android.provider.Telephony
 
 /**
- * 读取本机指定号码的短信（仅新增未读短信）
+ * 读取本机指定号码的短信（仅新增短信）
  */
 object SmsReader {
 
     /**
-     * 查询指定号码的最新未读短信
-     * @param context 上下文
-     * @param phoneNumbers 被监控的号码列表
-     * @param sinceTimestamp 只读取此时间戳之后的短信（用于增量读取）
-     * @return 读取到的短信列表，按时间升序排列
+     * 查询指定号码的新短信（时间戳之后）
      */
     fun readNewSms(
         context: Context,
@@ -33,9 +29,10 @@ object SmsReader {
             Telephony.Sms.READ
         )
 
-        // 构建查询条件：号码匹配 + 时间大于指定时间
+        // 使用 REPLACE 去掉号码中的特殊字符后精确匹配
+        val cleanAddress = "REPLACE(REPLACE(REPLACE(${Telephony.Sms.ADDRESS}, ' ', ''), '-', ''), '(', '')"
         val phoneConditions = phoneNumbers.joinToString(" OR ") {
-            "${Telephony.Sms.ADDRESS} LIKE '%${escapeLike(it)}%'"
+            "$cleanAddress = '${it.replace(Regex("[\\s\\-()]"), "")}'"
         }
         val selection = "($phoneConditions) AND ${Telephony.Sms.DATE} > $sinceTimestamp"
         val sortOrder = "${Telephony.Sms.DATE} ASC"
@@ -79,40 +76,8 @@ object SmsReader {
         return results
     }
 
-    private fun escapeLike(input: String): String {
-        return input.replace("\\", "\\\\")
-            .replace("%", "\\%")
-            .replace("_", "\\_")
-    }
-
     private fun normalizePhoneNumber(phone: String): String {
         return phone.replace(Regex("[\\s\\-()]"), "")
-    }
-
-    /**
-     * 获取指定号码的最新短信时间戳
-     */
-    fun getLatestSmsTimestamp(
-        context: Context,
-        phoneNumber: String
-    ): Long {
-        val uri: Uri = Telephony.Sms.Inbox.CONTENT_URI
-        val projection = arrayOf("MAX(${Telephony.Sms.DATE})")
-        val selection = "${Telephony.Sms.ADDRESS} LIKE '%${escapeLike(phoneNumber)}%'"
-
-        try {
-            val cursor: Cursor? = context.contentResolver.query(
-                uri, projection, selection, null, null
-            )
-            cursor?.use { c ->
-                if (c.moveToFirst()) {
-                    return c.getLong(0)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return 0L
     }
 
     data class SmsMessage(

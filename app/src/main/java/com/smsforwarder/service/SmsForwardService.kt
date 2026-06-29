@@ -4,11 +4,9 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.smsforwarder.R
 import com.smsforwarder.SmsForwarderApp
 import com.smsforwarder.data.model.ForwardLogEntity
 import com.smsforwarder.data.model.WhitelistEntity
@@ -16,7 +14,6 @@ import com.smsforwarder.ui.MainActivity
 import com.smsforwarder.util.SmsReader
 import com.smsforwarder.util.SmsSender
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 
 /**
  * 短信转发前台服务
@@ -37,7 +34,6 @@ class SmsForwardService : Service() {
         const val EXTRA_SENDER = "extra_sender"
         const val EXTRA_MESSAGE = "extra_message"
 
-        const val ACTION_START_SERVICE = "com.smsforwarder.action.START_SERVICE"
         const val ACTION_STOP_SERVICE = "com.smsforwarder.action.STOP_SERVICE"
     }
 
@@ -55,6 +51,7 @@ class SmsForwardService : Service() {
         super.onCreate()
         Log.d(TAG, "服务创建")
         startForeground(NOTIFICATION_ID, createNotification("服务已启动"))
+        addLog("系统", "服务已启动")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,6 +64,7 @@ class SmsForwardService : Service() {
                 }
             }
             ACTION_STOP_SERVICE -> {
+                addLog("系统", "服务停止")
                 stopSelf()
             }
         }
@@ -82,6 +80,18 @@ class SmsForwardService : Service() {
         super.onDestroy()
     }
 
+    private suspend fun addLog(whitelistPhone: String, content: String) {
+        repository.addForwardLog(
+            ForwardLogEntity(
+                whitelistPhone = whitelistPhone,
+                sourceNumber = "",
+                content = content,
+                forwardTime = System.currentTimeMillis(),
+                result = ""
+            )
+        )
+    }
+
     /**
      * 处理收到的短信
      */
@@ -92,6 +102,7 @@ class SmsForwardService : Service() {
         val whitelistEntry = repository.getWhitelistByPhone(sender)
         if (whitelistEntry == null) {
             Log.d(TAG, "发送者 $sender 不在白名单中，忽略")
+            addLog(sender, "收到非白名单号码短信，已忽略")
             return
         }
 
@@ -104,13 +115,16 @@ class SmsForwardService : Service() {
         // 3. 匹配指令
         when {
             body.trim() == forwardCmd -> {
+                addLog(sender, "收到申请转发指令")
                 handleForwardCommand(whitelistEntry, sender)
             }
             body.trim() == stopCmd -> {
+                addLog(sender, "收到停止转发指令")
                 handleStopCommand(whitelistEntry, sender)
             }
             else -> {
                 Log.d(TAG, "未知指令: $body")
+                addLog(sender, "收到未知指令: $body")
             }
         }
     }
@@ -130,11 +144,17 @@ class SmsForwardService : Service() {
         // 更新授权状态
         repository.updateAuth(entry.id, 1, expireTime)
 
-        // 初始化此号码的最后检查时间
-        authTimestamps[sender] = System.currentTimeMillis()
+        // 初始化此号码的最后检查时间——回溯到30秒前，确保不遗漏刚刚到达的短信
+        authTimestamps[sender] = System.currentTimeMillis() - 30000
 
         // 启动定时检查
         startPeriodicCheck()
+
+        val confirmMsg = "授权成功，有效期${durationMinutes}分钟"
+        addLog(sender, confirmMsg)
+
+        // 发送确认短信给白名单号码
+        SmsSender.sendSms(this, sender, confirmMsg)
 
         updateNotification("已授权 $sender，有效期 ${durationMinutes}分钟")
         Log.d(TAG, "白名单 $sender 已获得授权，有效期至 $expireTime")
@@ -146,6 +166,11 @@ class SmsForwardService : Service() {
     private suspend fun handleStopCommand(entry: WhitelistEntity, sender: String) {
         repository.updateAuth(entry.id, 0, 0)
         authTimestamps.remove(sender)
+
+        val confirmMsg = "转发授权已停止"
+        addLog(sender, confirmMsg)
+        SmsSender.sendSms(this, sender, confirmMsg)
+
         Log.d(TAG, "白名单 $sender 已停止授权")
 
         // 如果没有任何授权了，停止检查
@@ -171,7 +196,7 @@ class SmsForwardService : Service() {
                 } catch (e: Exception) {
                     Log.e(TAG, "检查短信异常", e)
                 }
-                delay(3000) // 每 3 秒检查一次
+                delay(3000)
             }
         }
     }
@@ -185,7 +210,6 @@ class SmsForwardService : Service() {
         // 1. 获取所有在有效期内的授权号码
         val authorizedList = repository.getAuthorizedNumbers()
         if (authorizedList.isEmpty()) {
-            // 没有有效授权，停止检查
             authTimestamps.clear()
             checkJob?.cancel()
             checkJob = null
@@ -205,7 +229,8 @@ class SmsForwardService : Service() {
             val whitelistPhone = authEntry.phoneNumber
 
             // 获取此白名单号码的上次检查时间
-            val sinceTime = authTimestamps[whitelistPhone] ?: (now - 5000) // 默认查最近5秒
+            val sinceTime = authTimestamps[whitelistPhone]
+                ?: (now - 30000) // 默认查最近30秒
 
             // 读取新短信
             val newMessages = SmsReader.readNewSms(
@@ -249,9 +274,6 @@ class SmsForwardService : Service() {
         updateNotification("转发服务运行中（${authorizedList.size}个授权）")
     }
 
-    /**
-     * 更新前台通知
-     */
     private fun updateNotification(text: String) {
         val notification = createNotification(text)
         val manager = getSystemService(android.app.NotificationManager::class.java)
