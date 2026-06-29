@@ -1,11 +1,17 @@
 package com.smsforwarder
 
+import android.Manifest
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 import com.smsforwarder.data.db.AppDatabase
+import com.smsforwarder.data.model.MonitoredNumberEntity
 import com.smsforwarder.data.repository.AppRepository
+import com.smsforwarder.receiver.SmsReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +26,9 @@ class SmsForwarderApp : Application() {
 
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // 动态注册的短信接收器（比静态注册更可靠）
+    private val smsReceiver = SmsReceiver()
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -29,6 +38,36 @@ class SmsForwarderApp : Application() {
 
         createNotificationChannel()
         initDefaultSettings()
+
+        // 动态注册短信接收广播（解决 Android 14+ 对静态注册广播的限制）
+        registerSmsReceiver()
+    }
+
+    /**
+     * 动态注册短信接收广播
+     * 相比 AndroidManifest 静态注册，动态注册在 Android 14+ 更可靠
+     */
+    private fun registerSmsReceiver() {
+        try {
+            val hasSmsPermission = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.RECEIVE_SMS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasSmsPermission) return
+
+            val filter = IntentFilter("android.provider.Telephony.SMS_RECEIVED")
+            filter.priority = IntentFilter.SYSTEM_HIGH_PRIORITY
+
+            // RECEIVER_EXPORTED 需要 API 33+，低版本用 null
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Context.RECEIVER_EXPORTED
+            } else {
+                0
+            }
+            registerReceiver(smsReceiver, filter, flags)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun createNotificationChannel() {
@@ -58,23 +97,20 @@ class SmsForwarderApp : Application() {
 
     private fun initDefaultSettings() {
         appScope.launch {
-            // 默认转发指令
-            if (repository.getSetting(KEY_COMMAND_FORWARD) == null) {
-                repository.setSetting(KEY_COMMAND_FORWARD, DEFAULT_COMMAND_FORWARD)
+            if (repository.getSetting(SmsForwarderApp.KEY_COMMAND_FORWARD) == null) {
+                repository.setSetting(SmsForwarderApp.KEY_COMMAND_FORWARD, DEFAULT_COMMAND_FORWARD)
             }
-            if (repository.getSetting(KEY_COMMAND_STOP) == null) {
-                repository.setSetting(KEY_COMMAND_STOP, DEFAULT_COMMAND_STOP)
+            if (repository.getSetting(SmsForwarderApp.KEY_COMMAND_STOP) == null) {
+                repository.setSetting(SmsForwarderApp.KEY_COMMAND_STOP, DEFAULT_COMMAND_STOP)
             }
-            // 默认有效期（30分钟）
-            if (repository.getSetting(KEY_AUTH_DURATION) == null) {
-                repository.setSetting(KEY_AUTH_DURATION, DEFAULT_AUTH_DURATION.toString())
+            if (repository.getSetting(SmsForwarderApp.KEY_AUTH_DURATION) == null) {
+                repository.setSetting(SmsForwarderApp.KEY_AUTH_DURATION, DEFAULT_AUTH_DURATION.toString())
             }
 
-            // 默认被监控号码：10086202
             val monitoredNumbers = repository.getAllMonitoredNumberList()
             if (monitoredNumbers.isEmpty()) {
                 repository.addMonitoredNumber(
-                    com.smsforwarder.data.model.MonitoredNumberEntity(
+                    MonitoredNumberEntity(
                         phoneNumber = "10086202",
                         description = "默认监控号码",
                         isDefault = true
