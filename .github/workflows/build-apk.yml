@@ -19,11 +19,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Generate Gradle Wrapper
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.7
+
+      - name: Generate wrapper files
         run: |
+          gradle wrapper --gradle-version=8.7
           chmod +x gradlew
-          # gradle wrapper 命令会下载 gradle-wrapper.jar 和 gradle-wrapper.properties
-          ./gradlew wrapper --gradle-version=8.7
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
