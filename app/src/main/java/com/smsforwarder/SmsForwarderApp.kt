@@ -58,9 +58,9 @@ class SmsForwarderApp : Application() {
             val filter = IntentFilter("android.provider.Telephony.SMS_RECEIVED")
             filter.priority = IntentFilter.SYSTEM_HIGH_PRIORITY
 
-            // RECEIVER_EXPORTED 需要 API 33+，低版本用 null
+            // RECEIVER_EXPORTED 需要 API 33+，低版本用 0
             val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Context.RECEIVER_EXPORTED
+                android.content.Context.RECEIVER_EXPORTED
             } else {
                 0
             }
