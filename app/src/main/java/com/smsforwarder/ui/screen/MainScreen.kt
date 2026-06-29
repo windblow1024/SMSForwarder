@@ -3,7 +3,7 @@ package com.smsforwarder.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Log
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -44,7 +44,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Log, contentDescription = null) },
+                    icon = { Icon(Icons.Default.List, contentDescription = null) },
                     label = { Text("转发日志") }
                 )
                 NavigationBarItem(
