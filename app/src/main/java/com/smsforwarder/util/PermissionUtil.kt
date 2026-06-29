@@ -1,7 +1,6 @@
 package com.smsforwarder.util
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -33,8 +32,7 @@ object PermissionUtil {
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val powerManager = context.getSystemService(Context.POWER_SERVICE)
-            Settings.System.canWrite(context) || // 简化检查
-                Settings.System.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS != null
+            Settings.System.canWrite(context)
         } else true
     }
 }
