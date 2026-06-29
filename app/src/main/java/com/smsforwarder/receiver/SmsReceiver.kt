@@ -10,7 +10,10 @@ import com.smsforwarder.service.SmsForwardService
 
 /**
  * 短信接收广播接收器
- * 监听所有收到的短信，判断发送者是否在白名单中，并解析指令
+ *
+ * 监听所有收到的短信，尝试通过 SmsForwardService 处理。
+ * 如果 Service 未运行（Android 14+ 限制后台启动前台服务），
+ * 则直接在本广播中调用 SmsForwardService 的静态方法处理。
  */
 class SmsReceiver : BroadcastReceiver() {
 
@@ -24,7 +27,6 @@ class SmsReceiver : BroadcastReceiver() {
         val bundle: Bundle = intent.extras ?: return
         val pdus = bundle.get("pdus") as? Array<*> ?: return
 
-        // 解析所有短信片段
         val messages = mutableListOf<SmsMessage>()
         for (pdu in pdus) {
             val format = bundle.getString("format")
@@ -34,14 +36,13 @@ class SmsReceiver : BroadcastReceiver() {
 
         if (messages.isEmpty()) return
 
-        // 取第一条短信的发送号码和内容
         val firstMsg = messages.first()
         val senderNumber = firstMsg.displayOriginatingAddress ?: return
         val messageBody = firstMsg.messageBody ?: return
 
         Log.d(TAG, "收到短信: from=$senderNumber, body=$messageBody")
 
-        // 将短信处理交给 Service（Service 里做数据库查询和授权检查）
+        // 优先尝试通过前台 Service 处理
         val serviceIntent = Intent(context, SmsForwardService::class.java).apply {
             action = SmsForwardService.ACTION_RECEIVED_SMS
             putExtra(SmsForwardService.EXTRA_SENDER, senderNumber)
@@ -51,7 +52,11 @@ class SmsReceiver : BroadcastReceiver() {
         try {
             context.startForegroundService(serviceIntent)
         } catch (e: Exception) {
-            Log.e(TAG, "启动 Service 失败", e)
+            Log.e(TAG, "startForegroundService 失败，直接处理", e)
+            // Android 14+ 后台无法启动前台服务时，直接处理
+            SmsForwardService.processIncomingSms(
+                context, senderNumber, messageBody
+            )
         }
     }
 }
