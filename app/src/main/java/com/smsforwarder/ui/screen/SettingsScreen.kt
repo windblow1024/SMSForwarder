@@ -29,9 +29,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var forwardCmd by viewModel.commandForward.collectAsState()
-    var stopCmd by viewModel.commandStop.collectAsState()
-    var duration by viewModel.authDuration.collectAsState()
+    val forwardCmd by viewModel.commandForward.collectAsState()
+    val stopCmd by viewModel.commandStop.collectAsState()
+    val duration by viewModel.authDuration.collectAsState()
 
     var editForwardCmd by remember { mutableStateOf(forwardCmd) }
     var editStopCmd by remember { mutableStateOf(stopCmd) }
