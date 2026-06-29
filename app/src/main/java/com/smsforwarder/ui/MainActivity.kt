@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.smsforwarder.ui.screen.MainScreen
 import com.smsforwarder.ui.theme.SmsForwarderTheme
 
 class MainActivity : ComponentActivity() {
