@@ -44,6 +44,16 @@ class SmsForwardService : Service() {
         private val globalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         /**
+         * 规范化手机号码：去除 +86、空格、横线、括号等前缀和符号
+         */
+        private fun normalizePhone(phone: String): String {
+            return phone.replace(Regex("[\\s\\-()]"), "")
+                .replace(Regex("^\\+86"), "")
+                .replace(Regex("^0086"), "")
+                .replace(Regex("^86"), "")
+        }
+
+        /**
          * 处理收到的短信（可在 Service 未启动时直接调用）
          */
         fun processIncomingSms(context: Context, sender: String, body: String) {
@@ -64,15 +74,17 @@ class SmsForwardService : Service() {
             body: String,
             context: Context? = null
         ) {
-            Log.d(TAG, "处理短信: from=$sender, body=$body")
+            // 规范化号码：+86159... -> 159...
+            val normalizedSender = normalizePhone(sender)
+            Log.d(TAG, "处理短信: from=$sender (normalized=$normalizedSender), body=$body")
 
-            // 1. 检查发送者是否在白名单中
-            val whitelistEntry = repo.getWhitelistByPhone(sender)
+            // 1. 检查发送者是否在白名单中（用规范化号码匹配）
+            val whitelistEntry = repo.getWhitelistByPhone(normalizedSender)
             if (whitelistEntry == null) {
                 Log.d(TAG, "发送者 $sender 不在白名单中，忽略")
                 repo.addForwardLog(
                     ForwardLogEntity(
-                        whitelistPhone = sender,
+                        whitelistPhone = normalizedSender,
                         sourceNumber = "",
                         content = "收到非白名单号码短信，已忽略",
                         forwardTime = System.currentTimeMillis(),
@@ -93,32 +105,32 @@ class SmsForwardService : Service() {
                 body.trim() == forwardCmd -> {
                     repo.addForwardLog(
                         ForwardLogEntity(
-                            whitelistPhone = sender,
+                            whitelistPhone = normalizedSender,
                             sourceNumber = "",
                             content = "收到申请转发指令",
                             forwardTime = System.currentTimeMillis(),
                             result = ""
                         )
                     )
-                    handleForwardCommandImpl(repo, whitelistEntry, sender, context)
+                    handleForwardCommandImpl(repo, whitelistEntry, normalizedSender, context)
                 }
                 body.trim() == stopCmd -> {
                     repo.addForwardLog(
                         ForwardLogEntity(
-                            whitelistPhone = sender,
+                            whitelistPhone = normalizedSender,
                             sourceNumber = "",
                             content = "收到停止转发指令",
                             forwardTime = System.currentTimeMillis(),
                             result = ""
                         )
                     )
-                    handleStopCommandImpl(repo, whitelistEntry, sender, context)
+                    handleStopCommandImpl(repo, whitelistEntry, normalizedSender, context)
                 }
                 else -> {
                     Log.d(TAG, "未知指令: $body")
                     repo.addForwardLog(
                         ForwardLogEntity(
-                            whitelistPhone = sender,
+                            whitelistPhone = normalizedSender,
                             sourceNumber = "",
                             content = "收到未知指令: $body",
                             forwardTime = System.currentTimeMillis(),
@@ -256,6 +268,7 @@ class SmsForwardService : Service() {
      * 实例方法：处理收到的短信
      */
     private suspend fun handleIncomingSms(sender: String, body: String) {
+        val normalized = normalizePhone(sender)
         handleIncomingSmsImpl(repository, sender, body, this)
     }
 
