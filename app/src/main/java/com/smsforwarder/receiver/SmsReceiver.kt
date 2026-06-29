@@ -21,7 +21,7 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != "android.provider.Telephony.SMS_RECEIVED") return
 
-        val bundle: Bundle? = intent.extras ?: return
+        val bundle: Bundle = intent.extras ?: return
         val pdus = bundle.get("pdus") as? Array<*> ?: return
 
         // 解析所有短信片段
