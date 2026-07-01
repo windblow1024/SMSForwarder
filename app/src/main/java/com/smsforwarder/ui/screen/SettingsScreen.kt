@@ -1,6 +1,7 @@
 package com.smsforwarder.ui.screen
 
 import android.content.Intent
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,55 @@ import com.smsforwarder.ui.viewmodel.MainViewModel
  * - 授权有效期配置
  * - 服务启停
  */
+/**
+ * 电池优化状态卡片
+ * 根据当前优化状态显示不同颜色和提示文字
+ */
+@Composable
+fun BatteryOptimizationCard(isOptimized: Boolean, onClick: () -> Unit) {
+    val color = if (isOptimized) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isOptimized) {
+                    Text("⚠️ ", style = MaterialTheme.typography.titleMedium)
+                } else {
+                    Text("✅ ", style = MaterialTheme.typography.titleMedium)
+                }
+                Text(
+                    text = if (isOptimized) "电池优化未关闭" else "电池优化已忽略",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (isOptimized) {
+                    "App 可能被系统后台清理导致收不到短信，建议加入白名单"
+                } else {
+                    "App 已加入电池优化白名单，后台存活更稳定"
+                },
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    if (isOptimized) "前往关闭电池优化"
+                    else "电池优化白名单设置"
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
@@ -145,18 +195,43 @@ fun SettingsScreen(viewModel: MainViewModel) {
         Text("系统设置引导", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
         Text(
-            "为确保后台服务持续运行，建议进行以下设置：",
+            "为确保后台服务持续运行（尤其小米 HyperOS / 华为等厂商系统），建议进行以下设置：",
             style = MaterialTheme.typography.bodyMedium
         )
 
-        OutlinedButton(
+        // 检测电池优化状态
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+
+        BatteryOptimizationCard(
+            isOptimized = !isIgnoringBattery,
             onClick = {
                 val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 context.startActivity(intent)
-            },
-            modifier = Modifier.fillMaxWidth()
+            }
+        )
+
+        // 其他厂商 ROM 提示
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Text("电池优化白名单设置")
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    "其他优化建议",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "1️⃣ 系统设置 → 应用设置 → 应用管理 → 短信转发器 → 自启动 → 打开\n" +
+                    "2️⃣ 系统设置 → 通知与控制中心 → 状态栏 → 显示通知图标（确保前台服务不被清理）\n" +
+                    "3️⃣ 多任务界面下拉锁定 App（防止一键清理时被关闭）",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }

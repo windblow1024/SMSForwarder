@@ -55,13 +55,23 @@ class SmsForwardService : Service() {
 
         /**
          * 处理收到的短信（可在 Service 未启动时直接调用）
+         * 包含安全初始化检查和异常捕获，防止 HyperOS 等厂商 ROM 杀进程后
+         * Application 未完全初始化时抛出异常导致短信丢失
          */
         fun processIncomingSms(context: Context, sender: String, body: String) {
             globalScope.launch {
-                val app = context.applicationContext as SmsForwarderApp
-                val repo = app.repository
-                Log.d(TAG, "直接处理短信: from=$sender, body=$body")
-                handleIncomingSmsImpl(repo, sender, body, context)
+                try {
+                    val app = context.applicationContext as? SmsForwarderApp
+                    if (app == null || !::repository.isInitialized) {
+                        Log.w(TAG, "Application 未初始化，短信跳过: from=$sender")
+                        return@launch
+                    }
+                    val repo = app.repository
+                    Log.d(TAG, "直接处理短信: from=$sender, body=$body")
+                    handleIncomingSmsImpl(repo, sender, body, context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "处理短信异常: from=$sender", e)
+                }
             }
         }
 

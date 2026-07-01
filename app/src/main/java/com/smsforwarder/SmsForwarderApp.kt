@@ -41,11 +41,19 @@ class SmsForwarderApp : Application() {
 
         // 动态注册短信接收广播（解决 Android 14+ 对静态注册广播的限制）
         registerSmsReceiver()
+
+        // 延迟 3 秒再注册一次，覆盖 HyperOS 杀进程后 Application 初始化窗口
+        // 部分厂商 ROM 在进程被拉起后短时间内可能无法正常接收广播
+        appScope.launch {
+            kotlinx.coroutines.delay(3000)
+            registerSmsReceiver()
+        }
     }
 
     /**
      * 动态注册短信接收广播
      * 相比 AndroidManifest 静态注册，动态注册在 Android 14+ 更可靠
+     * 此方法可安全重复调用（重复注册相同 filter 会覆盖旧注册）
      */
     private fun registerSmsReceiver() {
         try {
@@ -63,6 +71,12 @@ class SmsForwarderApp : Application() {
                 android.content.Context.RECEIVER_EXPORTED
             } else {
                 0
+            }
+            // 先反注册再注册，确保不会重复注册（覆盖旧的即可）
+            try {
+                unregisterReceiver(smsReceiver)
+            } catch (_: IllegalArgumentException) {
+                // 尚未注册，忽略
             }
             registerReceiver(smsReceiver, filter, flags)
         } catch (e: Exception) {
