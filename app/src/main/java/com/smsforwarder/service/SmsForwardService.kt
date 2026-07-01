@@ -62,7 +62,7 @@ class SmsForwardService : Service() {
             globalScope.launch {
                 try {
                     val app = context.applicationContext as? SmsForwarderApp
-                    if (app == null || !::repository.isInitialized) {
+                    if (app == null) {
                         Log.w(TAG, "Application 未初始化，短信跳过: from=$sender")
                         return@launch
                     }
